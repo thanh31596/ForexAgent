@@ -18,12 +18,12 @@ htmlcov/
 .env.*
 !.env.example
 
-# ML / data (large or local)
-mlruns/
-data/
-models_artifacts/
-logs/
-metrics/
+# ML / data (large or local) — anchored to repo root so paths like mnt/.../src/data/ stay trackable
+/mlruns/
+/data/
+/models_artifacts/
+/logs/
+/metrics/
 *.db
 *.sqlite3
 
