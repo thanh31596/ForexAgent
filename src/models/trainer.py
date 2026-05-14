@@ -101,7 +101,9 @@ def walk_forward_train(
     if last_trained is None:
         cut = max(int(0.75 * n), 50)
         if n - cut < 10 or cut < 30:
-            raise RuntimeError("Not enough rows after feature engineering for a minimal train/val split")
+            raise RuntimeError(
+                "Not enough rows after feature engineering for a minimal train/val split"
+            )
         X_tr, y_tr = X_full.iloc[:cut], y_full.iloc[:cut]
         X_te, y_te = X_full.iloc[cut:], y_full.iloc[cut:]
         m = model_factory()
