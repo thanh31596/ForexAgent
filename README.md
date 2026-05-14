@@ -2,7 +2,7 @@
 
 End-to-end forex trading-signal system pairing a classical ML pipeline with an agentic AI reasoning layer, packaged for production: MLflow registry, FastAPI service, Docker, CI/CD, and structured observability throughout.
 
-![CI](https://github.com/thanh31596/forexagent/actions/workflows/ci.yml/badge.svg)
+![CI](https://github.com/thanh31596/ForexAgent/actions/workflows/ci.yml/badge.svg)
 ![Python](https://img.shields.io/badge/python-3.11%2B-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
@@ -16,7 +16,27 @@ Trading results are reported honestly. Directional accuracy on liquid FX is hard
 
 ---
 
-## Architecture
+## Implementation execution order
+
+This codebase was assembled in **dependency order**, not “UI first.” The non-obvious choice is that **observability is second**: JSON logging and the JSONL latency sink exist before the data and ML layers, so every downstream component can emit structured events and timings natively instead of bolting on inconsistent telemetry at the end.
+
+1. Scaffold — `pyproject.toml`, `Makefile`, `.pre-commit-config.yaml`, CI skeleton, `.env.example`  
+2. **Config + observability** — `src/config.py`, `src/observability/`  
+3. Data pipeline — `src/data/` (fetchers, features, walk-forward splits, SQLAlchemy persistence)  
+4. Classical ML — `src/models/` (LightGBM + LSTM, walk-forward CV, MLflow)  
+5. Evaluation — `src/evaluation/` (baselines, drift, reports under `metrics/`)  
+6. Agent — `src/agent/` (LangGraph, RAG/news stubs, Pydantic I/O)  
+7. API — `src/api/` (`/predict`, `/health`, `/metrics`, `/retrain`)  
+8. Docker + CI/CD — `Dockerfile`, `docker-compose.yml`, GitHub Actions  
+9. Docs — this README + [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) (detailed runtime view; `architecture.md` at repo root is the same content on case-insensitive filesystems)
+
+---
+
+## Honest results (read this first)
+
+On liquid majors with technical features only, **directional accuracy in the low-to-mid 50% range is normal**, not a bug. Risk-adjusted returns often hug zero after costs. The portfolio value here is the **end-to-end engineering**: leak-aware CV, MLflow discipline, structured logs + latency JSONL, drift visibility, Pydantic boundaries, and an agent layer that explains *how* a signal was reached—not a claim of systematic alpha.
+
+---
 
 ```mermaid
 flowchart LR
@@ -86,8 +106,8 @@ Five independently testable layers:
 ## Quickstart
 
 ```bash
-git clone https://github.com/thanh31596/forexagent.git
-cd forexagent
+git clone https://github.com/thanh31596/ForexAgent.git
+cd ForexAgent
 cp .env.example .env          # fill in API keys
 make setup                    # create venv, install dev deps, install pre-commit
 make train                    # train baseline models, register best in MLflow

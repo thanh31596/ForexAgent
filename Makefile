@@ -12,7 +12,8 @@
         docker-build docker-up docker-down docker-logs \
         ci
 
-PYTHON      := python3.11
+# Prefer 3.11+ when available (pyproject requires >=3.11); fall back to python3.
+PYTHON      := $(shell command -v python3.11 >/dev/null 2>&1 && echo python3.11 || echo python3)
 VENV        := .venv
 BIN         := $(VENV)/bin
 SRC_DIRS    := src tests

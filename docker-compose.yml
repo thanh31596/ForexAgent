@@ -1,0 +1,72 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: mlflow
+      POSTGRES_PASSWORD: mlflow
+      POSTGRES_DB: mlflow
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U mlflow -d mlflow"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  minio:
+    image: minio/minio:latest
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: minio
+      MINIO_ROOT_PASSWORD: minio12345
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio:/data
+
+  mlflow:
+    image: python:3.11-slim
+    depends_on:
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_started
+    environment:
+      MLFLOW_S3_ENDPOINT_URL: http://minio:9000
+      AWS_ACCESS_KEY_ID: minio
+      AWS_SECRET_ACCESS_KEY: minio12345
+    command: >-
+      bash -c "pip install --no-cache-dir mlflow==2.14.0 psycopg2-binary boto3
+      && python -c \"import boto3, os; c=boto3.client('s3', endpoint_url=os.environ['MLFLOW_S3_ENDPOINT_URL'], aws_access_key_id=os.environ['AWS_ACCESS_KEY_ID'], aws_secret_access_key=os.environ['AWS_SECRET_ACCESS_KEY']); c.create_bucket(Bucket='mlflow')\" 2>/dev/null || true
+      && mlflow server --host 0.0.0.0 --port 5000
+      --backend-store-uri postgresql://mlflow:mlflow@postgres:5432/mlflow
+      --default-artifact-root s3://mlflow/"
+    ports:
+      - "5000:5000"
+
+  api:
+    build: .
+    depends_on:
+      postgres:
+        condition: service_healthy
+      mlflow:
+        condition: service_started
+    environment:
+      DATABASE_URL: postgresql+psycopg2://mlflow:mlflow@postgres:5432/mlflow
+      MLFLOW_TRACKING_URI: http://mlflow:5000
+      MLFLOW_S3_ENDPOINT_URL: http://minio:9000
+      AWS_ACCESS_KEY_ID: minio
+      AWS_SECRET_ACCESS_KEY: minio12345
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./mlruns:/app/mlruns
+      - ./metrics:/app/metrics
+      - ./logs:/app/logs
+
+volumes:
+  pgdata: {}
+  minio: {}
